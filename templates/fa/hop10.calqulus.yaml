@@ -1,0 +1,586 @@
+# Hop 10 — Power Jump-derived
+# HOP10_B, HOP10_L, HOP10_R
+# The preparatory jump is excluded. Scoring starts at its first touchdown.
+# One hop is touchdown -> take-off -> next touchdown; ten hops need 11 landings.
+
+############
+## SPACES ##
+############
+- space: VirtualLab
+  alignWithSegment:
+    segment: Hips_model
+
+############
+## EVENTS ##
+############
+- template: /templates/events-kinetics.calqulus.yaml
+  where:
+    force: any
+
+- event: EOF
+  steps:
+    - subtract: [$length, 1]
+
+# Power Jump event detection; 0.3 m/s adapts it for shallow rebound hops.
+- event: TakeOff_L_kinematics
+  where:
+    name: HOP10_[LB]*
+  set: left
+  steps:
+    - lowpass: PelvisCGPos_vel.z
+    - peakFinder:
+      height: 0.3
+      distance: 10
+
+- event: TakeOff_L_prio2
+  where:
+    name: HOP10_[LB]*
+  set: left
+  steps:
+    - if: exists(TakeOff_L_ML)
+      then: TakeOff_L_ML
+      else: TakeOff_L_kinematics
+
+- event: TakeOff_L
+  where:
+    name: HOP10_[LB]*
+  set: left
+  steps:
+    - if: exists(LOFF_force)
+      then: LOFF_force
+      else: TakeOff_L_prio2
+
+- event: TouchDown_L_kinematics
+  where:
+    name: HOP10_[LB]*
+  set: left
+  steps:
+    - negate: PelvisCGPos_vel.z
+    - lowpass:
+    - peakFinder:
+      height: 0.3
+      distance: 20
+
+- event: TouchDown_L_prio2
+  where:
+    name: HOP10_[LB]*
+  set: left
+  steps:
+    - if: exists(TouchDown_L_ML)
+      then: TouchDown_L_ML
+      else: TouchDown_L_kinematics
+
+- event: TouchDown_L
+  where:
+    name: HOP10_[LB]*
+  set: left
+  steps:
+    - if: exists(LON_force)
+      then: LON_force
+      else: TouchDown_L_prio2
+
+- event: TakeOff_R_kinematics
+  where:
+    name: HOP10_[RB]*
+  set: right
+  steps:
+    - lowpass: PelvisCGPos_vel.z
+    - peakFinder:
+      height: 0.3
+      distance: 10
+
+- event: TakeOff_R_prio2
+  where:
+    name: HOP10_[RB]*
+  set: right
+  steps:
+    - if: exists(TakeOff_R_ML)
+      then: TakeOff_R_ML
+      else: TakeOff_R_kinematics
+
+- event: TakeOff_R
+  where:
+    name: HOP10_[RB]*
+  set: right
+  steps:
+    - if: exists(ROFF_force)
+      then: ROFF_force
+      else: TakeOff_R_prio2
+
+- event: TouchDown_R_kinematics
+  where:
+    name: HOP10_[RB]*
+  set: right
+  steps:
+    - negate: PelvisCGPos_vel.z
+    - lowpass:
+    - peakFinder:
+      height: 0.3
+      distance: 20
+
+- event: TouchDown_R_prio2
+  where:
+    name: HOP10_[RB]*
+  set: right
+  steps:
+    - if: exists(TouchDown_R_ML)
+      then: TouchDown_R_ML
+      else: TouchDown_R_kinematics
+
+- event: TouchDown_R
+  where:
+    name: HOP10_[RB]*
+  set: right
+  steps:
+    - if: exists(RON_force)
+      then: RON_force
+      else: TouchDown_R_prio2
+
+# Exclude the preparatory jump and retain complete rebound cycles.
+- event: TakeOff_L_first
+  where:
+    name: HOP10_[LB]*
+  set: left
+  steps:
+    - import: TakeOff_L@1
+
+- event: TouchDown_L_first
+  where:
+    name: HOP10_[LB]*
+  set: left
+  steps:
+    - eventMask: [TouchDown_L, TakeOff_L_first, EOF]
+      keep: 1
+
+- event: TakeOff_R_first
+  where:
+    name: HOP10_[RB]*
+  set: right
+  steps:
+    - import: TakeOff_R@1
+
+- event: TouchDown_R_first
+  where:
+    name: HOP10_[RB]*
+  set: right
+  steps:
+    - eventMask: [TouchDown_R, TakeOff_R_first, EOF]
+      keep: 1
+
+- event: TakeOff_L_hops
+  where:
+    name: HOP10_[LB]*
+  set: left
+  steps:
+    - eventMask: [TakeOff_L, TouchDown_L_first, EOF]
+
+- event: TouchDown_L_hops
+  where:
+    name: HOP10_[LB]*
+  set: left
+  steps:
+    - eventMask: [TouchDown_L, TouchDown_L_first, EOF]
+
+- event: TakeOff_R_hops
+  where:
+    name: HOP10_[RB]*
+  set: right
+  steps:
+    - eventMask: [TakeOff_R, TouchDown_R_first, EOF]
+
+- event: TouchDown_R_hops
+  where:
+    name: HOP10_[RB]*
+  set: right
+  steps:
+    - eventMask: [TouchDown_R, TouchDown_R_first, EOF]
+
+- event: TakeOff_full_cycle_L
+  where:
+    name: HOP10_[LB]*
+  set: left
+  steps:
+    - refineEvent: TakeOff_L_hops
+      sequence: [TouchDown_L_hops, TakeOff_L_hops, TouchDown_L_hops]
+
+- event: TouchDown_full_cycle_L
+  where:
+    name: HOP10_[LB]*
+  set: left
+  steps:
+    - refineEvent: TouchDown_L_hops
+      sequence: [TakeOff_full_cycle_L, TouchDown_L_hops]
+
+- event: TakeOff_full_cycle_R
+  where:
+    name: HOP10_[RB]*
+  set: right
+  steps:
+    - refineEvent: TakeOff_R_hops
+      sequence: [TouchDown_R_hops, TakeOff_R_hops, TouchDown_R_hops]
+
+- event: TouchDown_full_cycle_R
+  where:
+    name: HOP10_[RB]*
+  set: right
+  steps:
+    - refineEvent: TouchDown_R_hops
+      sequence: [TakeOff_full_cycle_R, TouchDown_R_hops]
+
+- event: TouchDown_L_10
+  where:
+    name: HOP10_[LB]*
+  set: left
+  steps:
+    - import: TouchDown_full_cycle_L@10
+
+- event: TouchDown_R_10
+  where:
+    name: HOP10_[RB]*
+  set: right
+  steps:
+    - import: TouchDown_full_cycle_R@10
+
+- event: TakeOff_L_10
+  where:
+    name: HOP10_[LB]*
+  set: left
+  steps:
+    - eventMask: [TakeOff_full_cycle_L, TouchDown_L_first, TouchDown_L_10]
+
+- event: TouchDown_L_10all
+  where:
+    name: HOP10_[LB]*
+  set: left
+  steps:
+    - eventMask: [TouchDown_L_hops, TouchDown_L_first, TouchDown_L_10]
+
+- event: TakeOff_R_10
+  where:
+    name: HOP10_[RB]*
+  set: right
+  steps:
+    - eventMask: [TakeOff_full_cycle_R, TouchDown_R_first, TouchDown_R_10]
+
+- event: TouchDown_R_10all
+  where:
+    name: HOP10_[RB]*
+  set: right
+  steps:
+    - eventMask: [TouchDown_R_hops, TouchDown_R_first, TouchDown_R_10]
+
+# Power Jump's shared event names.
+- event: TakeOff
+  where:
+    name: HOP10_[LB]*
+  steps:
+    - import: TakeOff_L_10
+
+- event: TouchDown
+  where:
+    name: HOP10_[LB]*
+  steps:
+    - import: TouchDown_full_cycle_L
+    - eventMask: [$prev, TouchDown_L_first, TouchDown_L_10]
+
+- event: TakeOff
+  where:
+    name: HOP10_R*
+  steps:
+    - import: TakeOff_R_10
+
+- event: TouchDown
+  where:
+    name: HOP10_R*
+  steps:
+    - import: TouchDown_full_cycle_R
+    - eventMask: [$prev, TouchDown_R_first, TouchDown_R_10]
+
+- event: LeftPlotStart
+  where:
+    name: HOP10_[LB]*
+  set: left
+  steps:
+    - import: TouchDown_L_10all
+
+- event: LeftPlotEnd
+  where:
+    name: HOP10_[LB]*
+  set: left
+  steps:
+    - import: TakeOff_L_10
+
+- event: RightPlotStart
+  where:
+    name: HOP10_[RB]*
+  set: right
+  steps:
+    - import: TouchDown_R_10all
+
+- event: RightPlotEnd
+  where:
+    name: HOP10_[RB]*
+  set: right
+  steps:
+    - import: TakeOff_R_10
+
+############
+## SERIES ##
+############
+- template: /templates/timeseries.calqulus.yaml
+
+#############
+## METRICS ##
+#############
+# Power Jump jump-height pattern.
+- parameter: PelvisCGPos_max
+  steps:
+    - eventMask: [PelvisCGPos.z, TakeOff, TouchDown]
+    - max:
+
+- parameter: PelvisCGPos@TakeOff
+  steps:
+    - import: PelvisCGPos.z@TakeOff
+
+- parameter: Jump_height_HOP10_B
+  where:
+    name: HOP10_B*
+  steps:
+    - subtract: [PelvisCGPos_max, PelvisCGPos\@TakeOff]
+
+- parameter: Jump_height_HOP10_B_max
+  where:
+    name: HOP10_B*
+  steps:
+    - max: Jump_height_HOP10_B
+
+- parameter: Jump_height_HOP10_L
+  where:
+    name: HOP10_L*
+  set: left
+  steps:
+    - subtract: [PelvisCGPos_max, PelvisCGPos\@TakeOff]
+
+- parameter: Jump_height_HOP10_L_max
+  where:
+    name: HOP10_L*
+  set: left
+  steps:
+    - max: Jump_height_HOP10_L
+
+- parameter: Jump_height_HOP10_R
+  where:
+    name: HOP10_R*
+  set: right
+  steps:
+    - subtract: [PelvisCGPos_max, PelvisCGPos\@TakeOff]
+
+- parameter: Jump_height_HOP10_R_max
+  where:
+    name: HOP10_R*
+  set: right
+  steps:
+    - max: Jump_height_HOP10_R
+
+- parameter: Left_TouchDown_count_HOP10_B
+  where:
+    name: HOP10_B*
+  steps:
+    - count: TouchDown
+
+- parameter: Left_TouchDown_count_HOP10_L
+  where:
+    name: HOP10_L*
+  set: left
+  steps:
+    - count: TouchDown
+
+- parameter: Right_TouchDown_count_HOP10_R
+  where:
+    name: HOP10_R*
+  set: right
+  steps:
+    - count: TouchDown
+
+# Side Hop contact and flight-time pattern.
+- parameter: Left_contact_time
+  where:
+    name: HOP10_[LB]*
+  set: left
+  steps:
+    - eventDuration: [TouchDown_L_10all, TakeOff_L_10]
+
+- parameter: Left_Contact_count
+  where:
+    name: HOP10_[LB]*
+  set: left
+  steps:
+    - count: Left_contact_time
+
+- parameter: Left_flight_time
+  where:
+    name: HOP10_[LB]*
+  set: left
+  steps:
+    - eventDuration: [TakeOff_L_10, TouchDown_L_10all]
+
+- parameter: Left_flight_count
+  where:
+    name: HOP10_[LB]*
+  set: left
+  steps:
+    - count: Left_flight_time
+
+- parameter: Right_contact_time
+  where:
+    name: HOP10_[RB]*
+  set: right
+  steps:
+    - eventDuration: [TouchDown_R_10all, TakeOff_R_10]
+
+- parameter: Right_Contact_count
+  where:
+    name: HOP10_[RB]*
+  set: right
+  steps:
+    - count: Right_contact_time
+
+- parameter: Right_flight_time
+  where:
+    name: HOP10_[RB]*
+  set: right
+  steps:
+    - eventDuration: [TakeOff_R_10, TouchDown_R_10all]
+
+- parameter: Right_flight_count
+  where:
+    name: HOP10_[RB]*
+  set: right
+  steps:
+    - count: Right_flight_time
+
+# Power Jump take-off-velocity height.
+- parameter: Jump_height_takeoff_vel_HOP10_B
+  where:
+    name: HOP10_B*
+  steps:
+    - import: PelvisCGPos_vel.z@TakeOff
+    - power:
+    - divide: [$prev, 19.62]
+
+- parameter: Jump_height_takeoff_vel_HOP10_L
+  where:
+    name: HOP10_L*
+  set: left
+  steps:
+    - import: PelvisCGPos_vel.z@TakeOff
+    - power:
+    - divide: [$prev, 19.62]
+
+- parameter: Jump_height_takeoff_vel_HOP10_R
+  where:
+    name: HOP10_R*
+  set: right
+  steps:
+    - import: PelvisCGPos_vel.z@TakeOff
+    - power:
+    - divide: [$prev, 19.62]
+
+- parameter: RSI_HOP10_B
+  where:
+    name: HOP10_B*
+  steps:
+    - divide: [Jump_height_HOP10_B, Left_contact_time]
+
+- parameter: RSI_HOP10_L
+  where:
+    name: HOP10_L*
+  set: left
+  steps:
+    - divide: [Jump_height_HOP10_L, Left_contact_time]
+
+- parameter: RSI_HOP10_R
+  where:
+    name: HOP10_R*
+  set: right
+  steps:
+    - divide: [Jump_height_HOP10_R, Right_contact_time]
+
+# Power Jump GRF naming and per-contact event masks.
+- parameter: Left GRF_max_HOP10_B
+  where:
+    name: HOP10_B*
+    force: both
+  set: left
+  steps:
+    - eventMask: [Left GRF, TouchDown_L_10all, TakeOff_L_10]
+    - max: $prev.z
+
+- parameter: Right GRF_max_HOP10_B
+  where:
+    name: HOP10_B*
+    force: both
+  set: right
+  steps:
+    - eventMask: [Right GRF, TouchDown_R_10all, TakeOff_R_10]
+    - max: $prev.z
+
+- parameter: Left GRF_max_HOP10_L
+  where:
+    name: HOP10_L*
+    force: left
+  set: left
+  steps:
+    - eventMask: [Left GRF, TouchDown_L_10all, TakeOff_L_10]
+    - max: $prev.z
+
+- parameter: Right GRF_max_HOP10_R
+  where:
+    name: HOP10_R*
+    force: right
+  set: right
+  steps:
+    - eventMask: [Right GRF, TouchDown_R_10all, TakeOff_R_10]
+    - max: $prev.z
+
+# Summary RSI across the 10 scored repetitions.
+# RSI_HOP10_* remains the per-hop series: jump height / corresponding contact time.
+- parameter: RSI_HOP10_B_mean
+  where:
+    name: HOP10_B*
+  steps:
+    - mean: RSI_HOP10_B
+
+- parameter: RSI_HOP10_B_peak
+  where:
+    name: HOP10_B*
+  steps:
+    - max: RSI_HOP10_B
+
+- parameter: RSI_HOP10_L_mean
+  where:
+    name: HOP10_L*
+  set: left
+  steps:
+    - mean: RSI_HOP10_L
+
+- parameter: RSI_HOP10_L_peak
+  where:
+    name: HOP10_L*
+  set: left
+  steps:
+    - max: RSI_HOP10_L
+
+- parameter: RSI_HOP10_R_mean
+  where:
+    name: HOP10_R*
+  set: right
+  steps:
+    - mean: RSI_HOP10_R
+
+- parameter: RSI_HOP10_R_peak
+  where:
+    name: HOP10_R*
+  set: right
+  steps:
+    - max: RSI_HOP10_R
