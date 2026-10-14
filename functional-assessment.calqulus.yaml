@@ -53,15 +53,10 @@
   where:
     name: Lunge*
 
-- template: templates/generic/generic.calqulus.yaml
+# Test-only: this repository treats Generic measurements as bilateral Hop 10.
+- template: templates/fa/hop10.calqulus.yaml
   where:
-    fields: 
-      Session Type: Generic*
-
-- template: templates/generic/generic.calqulus.yaml
-  where:
-    fields: 
-      OnTraq Analysis: Generic
+    name: ^(HOP10|Generic).*
 
 - template: templates/running/running.calqulus.yaml
   where:
@@ -80,3 +75,16 @@
 - parameter: Measurement_Duration
   steps:
     - divide: [$length, $framerate]
+
+# HOP 10 REPORT CENTER TEST NOTES
+# Changed from the current GitHub main version of this file, not the older local copy.
+# The two Generic template imports were replaced by one Hop 10 import.
+# The route matches measurement names beginning HOP10 or Generic.
+# This test repository assumes every Generic measurement routed here is a
+# bilateral Hop 10 trial. Do not use this route for other Generic movements.
+# templates/fa/hop10.calqulus.yaml must also be uploaded from this package:
+# its Generic matches select the bilateral (B) calculation blocks.
+# Report Center Repository must point to JasonXu-BRC/New-Calqulus1.git,
+# with this root file and the matching Hop 10 template on the selected branch.
+# This is routing only. Calqulus compilation and event detection remain untested.
+
